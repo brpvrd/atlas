@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reativar o Arquivo: da Documentação ao Processo de Criação – Atlas Fotográfico</title>
-<meta name="description" content="Atlas fotográfico: mais de mil fotografias dos muros, reunidas em uma única grade para percorrer e ampliar.">
+<meta name="description" content="Reativar o Arquivo: da Documentação ao Processo de Criação. Atlas fotográfico com mais de mil fotografias, para percorrer e ampliar.">
 <style>
   :root { --fundo: #0a0a0a; --texto: #f2f2f2; --suave: #8c8c8c; }
   * { box-sizing: border-box; }
@@ -27,7 +27,7 @@
     display: block; width: 100px; height: 75px; object-fit: cover;
     background: #151515; -webkit-user-drag: none; pointer-events: none;
   }
-  header { position: fixed; left: 10px; top: 12px; z-index: 2; pointer-events: none; }
+  header { position: fixed; left: 10px; top: 12px; z-index: 2; pointer-events: none; max-width: calc(100% - 20px); }
   h1 {
     margin: 0; font-size: 13px; font-weight: 800;
     letter-spacing: .16em; text-transform: uppercase; line-height: 1.2;
@@ -43,7 +43,7 @@
 </head>
 <body>
 <header>
-  <h1>Reativar o Arquivo: da documentação ao processo de criação</h1>
+  <h1>Reativar o Arquivo: da Documentação ao Processo de Criação – Atlas Fotográfico</h1>
   <p>Atlas Fotográfico</p>
 </header>
 <main id="vista" tabindex="0" aria-label="Atlas fotográfico. Use as setas para mover, mais e menos para ampliar, zero para ver tudo.">
@@ -56,14 +56,15 @@ const FOTOS = ["0001.webp","0002.webp","0003.webp","0004.webp","0005.webp","0006
 
 (() => {
   const TW = 100, TH = 75, GAP = 3;           // tamanho de cada quadro no "mundo"
+  const LINHAS = 3;                           // quantas linhas a grade tem (troque aqui)
   const vista = document.getElementById('vista');
   const mundo = document.getElementById('mundo');
   const reduzMovimento = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- grade ----------
   const n = FOTOS.length;
-  const colunas = Math.ceil(Math.sqrt(n * (TH + GAP) / (TW + GAP)));
-  const linhas = Math.ceil(n / colunas);
+  const linhas = LINHAS;
+  const colunas = Math.ceil(n / linhas);
   const W = colunas * (TW + GAP) - GAP;
   const H = linhas * (TH + GAP) - GAP;
   mundo.style.gridTemplateColumns = `repeat(${colunas}, ${TW}px)`;
@@ -89,13 +90,22 @@ const FOTOS = ["0001.webp","0002.webp","0003.webp","0004.webp","0005.webp","0006
     mundo.style.transform = `translate(${x}px, ${y}px) scale(${k})`;
     agendarResolucao();
   }
-  function enquadrar() {
-    const vw = innerWidth, vh = innerHeight;
-    const margem = vw < 700 ? 16 : 56;
-    const topo = 56;                          // espaço para o título
-    const kk = Math.min((vw - margem * 2) / W, (vh - topo - margem) / H);
+  const TOPO = 56;                            // espaço para o título
+  const margemTela = () => innerWidth < 700 ? 16 : 56;
+  // tudo: a faixa inteira cabe na tela (tecla 0)
+  function vistaTudo() {
+    const vw = innerWidth, vh = innerHeight, m = margemTela();
+    const kk = Math.min((vw - m * 2) / W, (vh - TOPO - m) / H);
     kFit = kk;
-    return { x: (vw - W * kk) / 2, y: topo + (vh - topo - margem - H * kk) / 2, k: kk };
+    return { x: (vw - W * kk) / 2, y: TOPO + (vh - TOPO - m - H * kk) / 2, k: kk };
+  }
+  // início: fotos legíveis, começando pela esquerda da faixa
+  function vistaInicio() {
+    vistaTudo();                              // atualiza kFit
+    const vh = innerHeight, m = margemTela();
+    const disp = vh - TOPO - m;
+    const kk = Math.max(disp * 0.65 / H, kFit);
+    return { x: m, y: TOPO + (disp - H * kk) / 2, k: kk };
   }
   function zoomEm(px, py, fator, base = { x, y, k }) {
     const nk = clampK(base.k * fator);
@@ -201,7 +211,7 @@ const FOTOS = ["0001.webp","0002.webp","0003.webp","0004.webp","0005.webp","0006
     const agora = performance.now();
     if (ultimoToque && agora - ultimoToque.t < 320 && Math.hypot(e.clientX - ultimoToque.x, e.clientY - ultimoToque.y) < 28) {
       ultimoToque = null;
-      if (k > kFit * 6) irPara(enquadrar());
+      if (k > vistaInicio().k * 2.5) irPara(vistaInicio());
       else irPara(zoomEm(e.clientX, e.clientY, 3));
     } else {
       ultimoToque = { t: agora, x: e.clientX, y: e.clientY };
@@ -213,6 +223,12 @@ const FOTOS = ["0001.webp","0002.webp","0003.webp","0004.webp","0005.webp","0006
     e.preventDefault();
     cancelAnimationFrame(anim);
     const unidade = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+    // gesto horizontal (touchpad) ou Shift + roda: percorre a faixa de lado
+    if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      x -= (e.deltaX || e.deltaY) * unidade;
+      aplicar();
+      return;
+    }
     const fator = Math.exp(-e.deltaY * unidade * 0.0016);
     ({ x, y, k } = zoomEm(e.clientX, e.clientY, fator));
     aplicar();
@@ -222,7 +238,7 @@ const FOTOS = ["0001.webp","0002.webp","0003.webp","0004.webp","0005.webp","0006
   addEventListener('keydown', e => {
     const cx = innerWidth / 2, cy = innerHeight / 2, passo = 80;
     switch (e.key) {
-      case '0': irPara(enquadrar()); break;
+      case '0': irPara(vistaTudo()); break;
       case '+': case '=': irPara(zoomEm(cx, cy, 1.6), 200); break;
       case '-': case '_': irPara(zoomEm(cx, cy, 1 / 1.6), 200); break;
       case 'ArrowLeft':  irPara({ x: x + passo, y, k }, 120); break;
@@ -234,7 +250,7 @@ const FOTOS = ["0001.webp","0002.webp","0003.webp","0004.webp","0005.webp","0006
     e.preventDefault();
   });
 
-  addEventListener('resize', () => { const antes = kFit; enquadrar(); if (k <= antes * 1.01) irPara(enquadrar(), 0); });
+  addEventListener('resize', () => irPara(vistaInicio(), 0));
 
   // ---------- dica de uso ----------
   document.getElementById('dica').textContent = matchMedia('(pointer: coarse)').matches
@@ -242,7 +258,7 @@ const FOTOS = ["0001.webp","0002.webp","0003.webp","0004.webp","0005.webp","0006
     : 'Arraste para percorrer · roda do mouse para zoom · duplo clique para aproximar · tecla 0 para ver tudo';
 
   // ---------- início ----------
-  const inicio = enquadrar();
+  const inicio = vistaInicio();
   x = inicio.x; y = inicio.y; k = inicio.k;
   aplicar();
 })();
